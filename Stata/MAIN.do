@@ -56,10 +56,7 @@ qui do 01_cleaninsurance_v2.do
 qui do 01_cleanattitude.do 
 qui do 01_cleanparent.do
 qui do 01_cleanRAND.do
-/*
-	do 01_cleanwealth.do	
-	do 01_cleanconsumption.do
-*/
+
 save data/HRS_RAND_clean_long.dta, replace
 
 use data/HRS_RAND_clean_long.dta, clear
@@ -79,7 +76,6 @@ rename edu_col_ edu_col
 rename EXDEATHYR_ deathyr
 
 reshape wide *_, i(HHID PN) j(wave)
-/* drop the messy demos that didn't clean properly */
 
 /* sample selection again - only keep those aged 50 to 67 in 2006. */ 
 keep if age_8>=50 & age_8<=67 /* age screen */
@@ -100,15 +96,9 @@ save data/HRSaug_wide.dta, replace
 
 use data/HRSaug_wide.dta, clear
 
-/* no longer using stata to make the health proxies 
-do 03_constructhealth.do
-save data/HRSaug_health.dta, replace
-*/
-
 /*Export to matlab */
 do 05_export.do
 
-/******** this point onwards, re-run */
 /*Import from matlab */
 import delimited using "Q:\U\fyshao\HRS Health Expectations\Matlab\matlabout_0719.csv", asfloat clear
 rename v1 HHID
@@ -143,13 +133,3 @@ drop _merge
 save data/HRS_finaluse_wide.dta, replace
 
 use data/HRS_finaluse_wide.dta, clear
-/*
-/* SECTION 02: Construct health shocks */
-do 04_constructshock.do
-
-drop if group_8=="952"
-drop if group_8=="953"
-drop if group_8=="954"
-drop if group_8=="942"
-drop if group_8=="943"
-drop if group_8=="932"
