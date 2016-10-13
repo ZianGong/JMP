@@ -15,8 +15,8 @@ global R S SRH1 SRH2 X1 X2 Z1 Z2 X1_cons;
 global Nobs;
 global lenf leng;
 
-lenf=36; % number of health indicators, length of f0 vector
-leng=1; % number of demographic indicators +1, length gamma vectors
+lenf=28; % number of health indicators, length of f0 vector
+leng=9; % number of demographic indicators +1, length gamma vectors
 
 %these are the raw numbers as collected from STATA
 S_o = alldat(:,1); %survey response
@@ -26,9 +26,9 @@ SRH1_o = alldat(:,3); %SRH in 2006
 SRH2_o = alldat(:,4); %SRH in 2010
 
 X1_o = alldat(:,5:5+lenf-1); %X, observable health indicators in 2006 
-%Z1_o = alldat(:,5+lenf:5+lenf+leng-2); %demographics in 2006
+Z1_o = alldat(:,5+lenf:5+lenf+leng-2); %demographics in 2006
 X2_o = alldat(:,5+lenf+leng-1:5+lenf+leng+lenf-2); % X, observable health indicators 2010 
-%Z2_o = alldat(:,5+lenf+leng+lenf-1:5+lenf+leng+lenf+leng-3); %demographics in 2010
+Z2_o = alldat(:,5+lenf+leng+lenf-1:5+lenf+leng+lenf+leng-3); %demographics in 2010
 Pworse = alldat(:,end-10:end);
 Nobs=length(R_o);
 
@@ -37,28 +37,30 @@ R_o = dummyvar(R_o);
 S_o = S_o;
 SRH1_o=dummyvar(SRH1_o);
 SRH2_o=dummyvar(SRH2_o);
-Z1_o=[ones(Nobs,1)];
-Z2_o=[ones(Nobs,1)];
+Z1_o=[Z1_o ones(Nobs,1)];
+Z2_o=[Z2_o ones(Nobs,1)];
 X1_cons_o=[X1_o ones(Nobs,1)];
 save 1_input.mat;
 
 %% initial guesses
 
-f0 = [-0.35967906	-0.08849354	-0.02168496	-0.26232046	-0.13822877 ...
-    -0.14853863	-0.21397541	-0.23208346	-0.00943392	-0.11821774 ...
-    -0.22441613	-0.35600326	-0.26148077	-0.26826835	-0.40153302	...
-    -0.28997791	-0.1597751	-0.1884215	-0.1601791	-0.00941442	...
-    -0.21733982	0.11815983	0.01245018	0.02653814	-0.11435523	...
-    -0.01271939	-0.18183934	0.01 0.19082532	-0.03740161	-0.33131373	...
-    -0.0459417	0.06167067	0.20798746	0.30336092	0.00553904];
+f0 = [-0.2974506 -0.0453293 -0.0893591 -0.1 -0.1400282 -0.1268269 ...
+    -0.1999321 -0.1528366 -0.0458171 -0.1571299 -0.2239212 -0.3094649 ... 
+    -0.2172781 -0.1054837 -0.3105015 -0.2754361 -0.0866486 -0.2463365  ...
+    -0.0424097 0.0185577 -0.1665383 0.0848282 0.083526 0.102635 -0.16511  ...
+    -0.16511 -0.16511 0.0063674 ];
 
-g10 = [-1.8];
+g10 = [-0.2648596  -0.2 0.1 0.1 -0.0051276 ...
+    -0.0999723 -0.0663005 -0.0710725 0.1337235];
 
-g20 = [-0.5];
+g20 = [-0.2698166   -0.2 0.1 0.1  -0.0436219 ...
+    -0.2923615 -0.3408383 -0.0198628 0.1856874];
 
-g30 = [0.7];
+g30 = [-0.2230454  -0.2 0.1 0.1 -0.0463935 ...
+    -0.1421412 -0.2423781 0.0103208 0.1692313];
 
-g40 = [2];
+g40 = [-0.1093865   -0.2 0.1 0.1 -0.023924 ...
+    0.0849678 -0.0296107 0.0518482 -0.6616301];
 
 f0 = round(f0,2);
 g10 = round(g10,2);
@@ -75,7 +77,7 @@ x10 = [f0 g10 g20 g30 g40];
 x20 = [b0 st0 se0];
 
 %% call MLE
-bootnum = 1; % number of bootstraps
+bootnum = 500; % number of bootstraps
 bootcoeff = zeros(bootnum, 2*lenf+4*leng+3);
 maxit = 500;
 errout = zeros(bootnum,maxit);
@@ -87,9 +89,9 @@ rng(1);
 
 for i=1:bootnum
     
-%    index=fix(rand(1,Nobs)*Nobs)+1; %draw random sample for the bootstrap with N obs 
-     index = 1:Nobs; %uses all obs as is.
-     index = index';
+    index=fix(rand(1,Nobs)*Nobs)+1; %draw random sample for the bootstrap with N obs 
+%     index = 1:Nobs; %uses all obs as is.
+%     index = index';
     R = R_o(index,:);
     S = S_o(index,:);
     SRH1 = SRH1_o(index,:);
@@ -113,11 +115,10 @@ for i=1:bootnum
     while (iter < maxit) && err >= tol 
             %part1
             lik1 = MLE_part1_v2(coeff1,coeff2);
-
-            L1 = sum(lik1);
             si = fdjac('MLE_part1_v2',coeff1,coeff2);
             d = (si'*si)\(si'*ones(Nobs,1));
 
+            L1 = sum(lik1);
 
             coeff1 = (coeff1' + 0.2*d)';
             err1 = (max(max(abs(d))));
@@ -185,7 +186,7 @@ Theta = dot(Theta_temp, R_o,2);
 %Theta = zeros(Nobs,1);
 EH2 = X1_cons_o*bhat' + Theta;
 EH2_2 = X1_cons_o*bhat';
-%% Export to stata
+%% Export to matlab
 id = csvread('matlab_input.csv', 1,0);
 id = id(:,1:2);
 dataout= [id H1 H2 EH2 EH2_2 ];
